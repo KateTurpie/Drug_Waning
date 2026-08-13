@@ -4,7 +4,7 @@
 
 # Purpose : Defines the core age-structured RSV dynamic transmission model
 # By : Kate Turpie
-# Updated : 07-July-26
+# Updated : 09-July-26
 
 
 # ---------------------------------------------------------------------------- #
