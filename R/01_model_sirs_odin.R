@@ -56,7 +56,7 @@ model_sirs <- odin2::odin(
     update(beta_check) <- beta
     
     # -- Trial Efficacy --
-    update(efficacy_true) <- (chi*exp(-omega*time))
+    update(efficacy_true) <- (chi*exp(-omega*trial_day))
     update(efficacy_measured) <-((Ic[1]/(n_trial/2))-(Itx[1]/(n_trial/2)))/(Ic[1]/(n_trial/2))
     
     # ---- Transitions & Transition Rates ----
@@ -75,9 +75,9 @@ model_sirs <- odin2::odin(
     n_RS[] <- Binomial(R[i], p_RS[i])
     
     # -- Trial-level Transitions --
-    n_ScIc[] <- if (time >= tau_start && time < tau_start + tau_end) Binomial(Sc[i], p_SIu[i]) else 0
+    n_ScIc[] <- if (time >= tau_start && time < tau_end) Binomial(Sc[i], p_SIu[i]) else 0
     
-    n_StxItx[] <- if (time >= tau_start && time < tau_start + tau_end) Binomial(Stx[i], p_StxItx[i]) else 0
+    n_StxItx[] <- if (time >= tau_start && time < tau_end) Binomial(Stx[i], p_StxItx[i]) else 0
     
     # -- Transition Rates --
     p_SP[] <- 1 - exp(-rho[i] * dt)
@@ -103,7 +103,7 @@ model_sirs <- odin2::odin(
     # -- Trial Parameters -- 
     start_Sc <- parameter()
     start_Stx <- parameter()
-    #tau = trial duration = tau_end - tau_start
+    #tau <- trial_duration
     tau_start <- parameter() #trial start day (model burn in period)
     tau_end <- parameter() #trial end day (trial duration + model burn in period)
     
@@ -133,7 +133,7 @@ model_sirs <- odin2::odin(
     n_age_groups_trial <- parameter()
     
     # -- Dimensions --
-    dim(S, S2, I, Iu, Ip, R, P, n_age, age_groups) <- n_age_groups #for age stratification
+    dim(S, S2, I, Iu, Ip, R, P, n_age) <- n_age_groups #for age stratification
     dim(start_S, start_I, start_Iu, start_Ip, start_R, start_P) <- n_age_groups #for age stratification
     dim(p_SIu, p_S2Iu, p_SP,p_PS, p_PIp, p_IR, p_RS) <- n_age_groups
     dim(lambda, lambda2, lambda_p, lambda_check, rho) <- n_age_groups
@@ -143,8 +143,8 @@ model_sirs <- odin2::odin(
     dim(Sc, Ic, Stx, Itx) <- n_age_groups_trial
     dim(start_Sc, start_Stx) <- n_age_groups_trial
     dim(n_ScIc, n_StxItx, p_StxItx, lambda_tx) <- n_age_groups_trial
-    dim(Ic_ma, Itx_ma) <- n_age_groups_trial
-    dim(TotalCases_pop, TotalCases_trial, TotalCases_popMA, TotalCases_trialMA) <- n_age_groups
+    dim(Ic_ma, Itx_ma, TotalCases_trialMA, TotalCases_trial) <- n_age_groups_trial
+    dim(TotalCases_pop, TotalCases_popMA) <- n_age_groups
     
     # ---- Initial Conditions ----
     
@@ -206,6 +206,9 @@ model_sirs <- odin2::odin(
     beta_p <- beta*(1-chi) #infection rate (protected)
     lambda_p[] <- beta_p * seasonal_forcing * sum(contacts_ij[i,])
     
-    lambda_tx[] <- lambda[i]*(1-(chi*exp((-omega)*time)))
+    lambda_tx[] <- lambda[i]*(1-(chi*exp((-omega)*trial_day))) #FoI for those in Stx (protected by drug)
+    
+    ## ---- Trial Day ----
+    trial_day <- if (time >= tau_start) time - tau_start else 0
     
   })
