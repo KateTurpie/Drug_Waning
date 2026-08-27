@@ -91,8 +91,8 @@ input_prophylactic <- function(efficacy = 0.9,
 }
 
 input_epi <- function(p_ma = c(0.2,0.2,0.2,0.2,0.2,0.2,1/6,1/6,1/6,1/6,1/6),
-                      alpha = 0, 
-                      offset = 0) {
+                      alpha = 0.2, 
+                      offset = 30) {
   out <- list(p_ma = p_ma,
               alpha = alpha,
               offset = offset)
@@ -225,5 +225,3 @@ input_all <- function(defaults = TRUE) {
   
   return(out)
 }
-
-# ---- Model Calibration ----
