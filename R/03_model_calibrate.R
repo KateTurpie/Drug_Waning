@@ -103,7 +103,7 @@ for (i in seq_len(nrow(calibration_grid))) {
     log(infant_cases / infant_case_target)^2 +
     ((peak_day - peak_target) / 30)^2 + # measured error in months
     ((season_width - width_target) / 45)^2 # measured error by 6 weeks 
-                                          #  (1/3 of ideal season length)
+                                           #  (1/3 of ideal season length)
   
   summaries[[i]] <- data.frame(
     calibration_grid[i, ],
