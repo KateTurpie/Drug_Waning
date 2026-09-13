@@ -635,7 +635,7 @@ figure_5 <- function(
     metric = "I_ma1",
     waning_durations = c(150, 500, 1000),
     y_label = "RCT-measured efficacy",
-    x_label = "Error in predicted\npopulation-level impact",
+    x_label = "Error in predicted\npopulation-level impact"
 ) {
   
   # ---- Baseline medically-attended burden ----
@@ -688,7 +688,7 @@ figure_5 <- function(
       ve_label <- as.character(ve_values$VE[i])
       ve_numeric <- ve_values$VE_numeric[i]
       
-      scenario_outputs[[ve_label]] <- run_model(
+      scenario_outputs[[ve_label]] <- suppressMessages(run_model(
         model = model,
         params = params$inputs,
         dar = params$meta_params,
@@ -704,7 +704,7 @@ figure_5 <- function(
           VE = ve_label,
           VE = factor(VE, levels = levels(factor(model_run$VE))),
           waning_duration = duration
-        )
+        ))
     }
     
     misparam_outputs[[as.character(duration)]] <- bind_rows(scenario_outputs)
@@ -766,62 +766,94 @@ figure_5 <- function(
       parameterisation = factor(parameterisation, levels = parameterisation_levels)
     )
   
-  # ---- Colours ----
+  # ---- Dynamic colours so names actually match parameterisation levels ----
+  duration_colours <- c("#F6A6B2", "#E25178", "#D01856")[seq_along(waning_durations)]
+  
   parameterisation_colours <- c(
     "RCT-compatible efficacy & duration" = "#FFA600",
-    "Waning efficacy (150 days)" = "#F6A6B2",
-    "Waning efficacy (500 days)" = "#F03B78",
-    "Waning efficacy (1000 days)" = "#D01856"
+    setNames(
+      duration_colours,
+      paste0("Waning efficacy (", waning_durations, " days)")
+    )
   )
   
-  # ---- Plot ----
-  graph <- ggplot(
-    output_data,
-    aes(
-      y = VE,
-      xmin = xmin,
-      xmax = xmax,
-      fill = parameterisation
+  # ---- Make VE numeric positions so we can manually dodge horizontal bars ----
+  output_data <- output_data %>%
+    mutate(
+      VE_num = as.numeric(VE),
+      parameterisation_num = as.numeric(parameterisation),
+      dodge_offset = (parameterisation_num - mean(seq_along(levels(parameterisation)))) * 0.16,
+      y_mid = VE_num + dodge_offset,
+      y_min = y_mid - 0.07,
+      y_max = y_mid + 0.07
     )
-  ) +
+  
+  # ---- Background stripes like old version ----
+  stripes <- tibble::tibble(
+    VE_num = seq_along(levels(output_data$VE)),
+    ystart = VE_num - 0.5,
+    yend = VE_num + 0.5
+  ) %>%
+    filter(VE_num %% 2 == 1)
+  
+  # ---- Plot ----
+  graph <- ggplot() +
+    
     geom_rect(
+      data = stripes,
       aes(
         xmin = -Inf,
         xmax = Inf,
-        ymin = as.numeric(VE) - 0.5,
-        ymax = as.numeric(VE) + 0.5
+        ymin = ystart,
+        ymax = yend
       ),
-      inherit.aes = FALSE,
-      fill = "grey95",
-      alpha = 0.8
+      fill = "lavenderblush3",
+      alpha = 0.20
     ) +
+    
     geom_vline(
       xintercept = 0,
       colour = "black",
-      linewidth = 0.4
+      linewidth = 0.5
     ) +
-    geom_errorbarh(
+    
+    geom_rect(
+      data = output_data,
       aes(
-        x = NULL,
-        height = 0.18
+        xmin = xmin,
+        xmax = xmax,
+        ymin = y_min,
+        ymax = y_max,
+        fill = parameterisation
       ),
-      position = position_dodge(width = 0.65),
-      linewidth = 6
+      colour = NA
     ) +
-    scale_fill_manual(
-      values = parameterisation_colours,
-      name = "Model parameterisation"
-    ) +
+    
     scale_x_continuous(
       labels = scales::label_percent(accuracy = 1),
       expand = expansion(mult = c(0.02, 0.06))
     ) +
+    
+    scale_y_continuous(
+      breaks = seq_along(levels(output_data$VE)),
+      labels = levels(output_data$VE),
+      expand = expansion(mult = c(0.04, 0.04))
+    ) +
+    
+    scale_fill_manual(
+      values = parameterisation_colours,
+      name = "Model parameterisation"
+    ) +
+    
     labs(
       x = x_label,
       y = y_label
     ) +
+    
     theme_clean() +
     theme(
+      panel.grid.major.y = element_blank(),
+      axis.ticks.y = element_blank(),
       legend.position = "bottom",
       legend.title = element_text(size = 10, face = "bold")
     )
